@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 import nltk
+import matplotlib.pyplot as plt
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -84,6 +85,37 @@ def analyze_sentiments(reviews):
     return df_sentiments
 
 
+def analyze_sentiments(reviews, output_file):
+    # Initialize sentiment analyzer
+    sid = SentimentIntensityAnalyzer()
+
+    # Preprocess reviews
+    reviews = [review.lower().replace('\n', ' ').replace('\r', '') for review in reviews]
+    reviews = [' '.join(re.findall(r'\w+', review)) for review in reviews]
+
+    # Analyze sentiments
+    sentiments = []
+    for review in reviews:
+        sentiment = sid.polarity_scores(review)
+        sentiment['review'] = review  # Add review to sentiment dictionary
+        sentiments.append(sentiment)
+
+    # Convert sentiments to DataFrame
+    df_sentiments = pd.DataFrame(sentiments)
+
+    # Reorder columns
+    cols = ['review', 'neg', 'neu', 'pos', 'compound']
+    df_sentiments = df_sentiments[cols]
+
+    # Create plot
+    plt.plot(df_sentiments.index, df_sentiments['compound'])
+    plt.xlabel('Review Number')
+    plt.ylabel('Sentiment Score')
+    plt.title('Sentiment Analysis')
+    plt.savefig(output_file.replace('.csv', '.png'))
+
+    return df_sentiments
+
 def main():
     # Scrape reviews
     count =int(input("Enter the number of reviews you want to scrape: "))
@@ -91,10 +123,10 @@ def main():
     reviews = scrape_reviews(product_url,count)
 
     # Perform sentiment analysis
-    df_sentiments = analyze_sentiments(reviews)
+    output_file = "amazon_reviews_sentiments.csv"
+    df_sentiments = analyze_sentiments(reviews, output_file)
 
     # Save results to CSV file
-    output_file = "amazon_reviews_sentiments.csv"
     df_sentiments.to_csv(output_file, index=False)
 
     # Print absolute path of output file
@@ -106,6 +138,7 @@ def main():
         print("CSV file created successfully!")
     else:
         print("Failed to create CSV file.")
-
+        
 if __name__ == "__main__":
     main()
+
