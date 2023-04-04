@@ -14,7 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 nltk.download('vader_lexicon')
 import re
-def scrape_reviews(product_url):
+def scrape_reviews(product_url,count):
     # Open Chrome browser
     opts = Options()
     driver = webdriver.Chrome('chromedriver')
@@ -45,8 +45,8 @@ def scrape_reviews(product_url):
             reviews1 = [elem.text for elem in review_elems1]
             
             reviews.extend(reviews1)
-            
-            if len(reviews) >= 30:
+            #Limists the number of reviews
+            if len(reviews) >= count:
                 break
         except NoSuchElementException:
             print('Nothing more to load')
@@ -62,9 +62,8 @@ def scrape_reviews(product_url):
 def analyze_sentiments(reviews):
     # Initialize sentiment analyzer
     sid = SentimentIntensityAnalyzer()
-    
-    
-    # reviews = [review.encode('utf-8') for review in reviews]
+
+    # Preprocess reviews
     reviews = [review.lower().replace('\n', ' ').replace('\r', '') for review in reviews]
     reviews = [' '.join(re.findall(r'\w+', review)) for review in reviews]
 
@@ -72,17 +71,24 @@ def analyze_sentiments(reviews):
     sentiments = []
     for review in reviews:
         sentiment = sid.polarity_scores(review)
+        sentiment['review'] = review  # Add review to sentiment dictionary
         sentiments.append(sentiment)
-    
+
     # Convert sentiments to DataFrame
     df_sentiments = pd.DataFrame(sentiments)
-    
+
+    # Reorder columns
+    cols = ['review', 'neg', 'neu', 'pos', 'compound']
+    df_sentiments = df_sentiments[cols]
+
     return df_sentiments
+
 
 def main():
     # Scrape reviews
-    product_url = "https://www.amazon.com/Samsung-Galaxy-Factory-Unlocked-Smartphone/dp/B08FYTSXGQ"
-    reviews = scrape_reviews(product_url)
+    count =int(input("Enter the number of reviews you want to scrape: "))
+    product_url = input("Enter the product url: ")
+    reviews = scrape_reviews(product_url,count)
 
     # Perform sentiment analysis
     df_sentiments = analyze_sentiments(reviews)
